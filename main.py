@@ -1,3 +1,4 @@
+import logging
 import os
 
 import spotipy
@@ -10,6 +11,21 @@ load_dotenv()
 
 
 def get_spotify_playlist_tracks(sp, playlist_id):
+    """
+    Retrieve all tracks from a Spotify playlist.
+
+    Parameters
+    ----------
+    sp : spotipy.Spotify
+        An authenticated Spotify client.
+    playlist_id : str
+        The Spotify ID of the playlist.
+
+    Returns
+    -------
+    list of dict
+        A list of dictionaries containing track details such as name, artist, and bpm.
+    """
     results = sp.playlist_tracks(playlist_id)
     tracks = results["items"]
     while results["next"]:
@@ -32,31 +48,75 @@ def get_spotify_playlist_tracks(sp, playlist_id):
 
 
 def get_playlist_title(sp, playlist_id):
+    """
+    Retrieve the title of a Spotify playlist.
+
+    Parameters
+    ----------
+    sp : spotipy.Spotify
+        An authenticated Spotify client.
+    playlist_id : str
+        The Spotify ID of the playlist.
+
+    Returns
+    -------
+    str
+        The title of the playlist.
+    """
     playlist = sp.playlist(playlist_id)
     playlist_title = playlist["name"]
     return playlist_title
 
 
 def download_song_from_youtube(song_name, artist_name, output_dir, song_bpm):
+    """
+    Download a song from YouTube.
+
+    Parameters
+    ----------
+    song_name : str
+        The name of the song.
+    artist_name : str
+        The name of the artist.
+    output_dir : str
+        The directory to save the downloaded song.
+    song_bpm : float
+        The BPM (beats per minute) of the song.
+
+    Raises
+    ------
+    Exception
+        If there is an error during the download process.
+    """
     search_results = Search(f"{song_name} {artist_name}").videos
     if search_results:
         video_url = search_results[0].watch_url
         try:
             yt = YouTube(video_url, on_progress_callback=on_progress)
-            print(yt.title)
             ys = yt.streams.get_audio_only()
-            print(f"Downloading: {song_name} - {artist_name}")
+            logging.info("Downloading: %s - %s", song_name, artist_name)
             ys.download(
                 mp3=True,
                 output_path=output_dir,
                 filename=f"{song_bpm} BPM — {song_name} - {artist_name}",
             )
         except Exception as ex:
-            print(ex)
-            return
+            raise f"Exception on song: {song_name}: {ex}"
 
 
 def download_playlist_from_spotify(playlist_id, client_id, client_secret):
+    """
+    Download all tracks from a Spotify playlist and save them to a specified directory.
+
+    Parameters
+    ----------
+    playlist_id : str
+        The Spotify ID of the playlist.
+    client_id : str
+        The Spotify client ID.
+    client_secret : str
+        The Spotify client secret.
+    """
     client_credentials_manager = SpotifyClientCredentials(client_id, client_secret)
     sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
     playlist_tracks = get_spotify_playlist_tracks(sp, playlist_id)
@@ -79,10 +139,26 @@ def download_playlist_from_spotify(playlist_id, client_id, client_secret):
 
 
 def convert_link_to_id(link):
+    """
+    Convert a Spotify playlist link to its ID.
+
+    Parameters
+    ----------
+    link : str
+        The Spotify playlist link.
+
+    Returns
+    -------
+    str
+        The Spotify playlist ID.
+    """
     return link.split("/")[4].split("?")[0]
 
 
 def main():
+    """
+    Main function to download a Spotify playlist.
+    """
     client_id = os.environ.get("SPOTIPY_CLIENT_ID")
     client_secret = os.environ.get("SPOTIPY_CLIENT_SECRET")
     playlist_link = input("Enter the Spotify playlist link: ")
