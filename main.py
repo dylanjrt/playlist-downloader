@@ -8,6 +8,7 @@ from pytubefix.cli import on_progress
 from spotipy.oauth2 import SpotifyClientCredentials
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO)
 
 
 def get_spotify_playlist_tracks(sp, playlist_id):
@@ -68,7 +69,7 @@ def get_playlist_title(sp, playlist_id):
     return playlist_title
 
 
-def download_song_from_youtube(song_name, artist_name, output_dir, song_bpm):
+def download_song_from_youtube(song_name, artist_name, output_path, song_bpm):
     """
     Download a song from YouTube.
 
@@ -97,14 +98,14 @@ def download_song_from_youtube(song_name, artist_name, output_dir, song_bpm):
             logging.info("Downloading: %s - %s", song_name, artist_name)
             ys.download(
                 mp3=True,
-                output_path=output_dir,
+                output_path=output_path,
                 filename=f"{song_bpm} BPM — {song_name} - {artist_name}",
             )
         except Exception as ex:
             raise f"Exception on song: {song_name}: {ex}"
 
 
-def download_playlist_from_spotify(playlist_id, client_id, client_secret):
+def download_playlist_from_spotify(playlist_id, client_id, client_secret, output_dir):
     """
     Download all tracks from a Spotify playlist and save them to a specified directory.
 
@@ -122,20 +123,20 @@ def download_playlist_from_spotify(playlist_id, client_id, client_secret):
     playlist_tracks = get_spotify_playlist_tracks(sp, playlist_id)
 
     playlist_title = get_playlist_title(sp, playlist_id)
-    download_dir = f"/Users/dylan/Desktop/mixing/{playlist_title}"
-    os.makedirs(download_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, playlist_title)
+    os.makedirs(output_path, exist_ok=True)
 
     for track in playlist_tracks:
         song_name = track["name"]
         artist_name = track["artist"]
         song_bpm = track["bpm"]
         try:
-            download_song_from_youtube(song_name, artist_name, download_dir, song_bpm)
+            download_song_from_youtube(song_name, artist_name, output_path, song_bpm)
         except Exception as ex:
             print(f"Exception on song: {song_name} - {ex}")
             continue
 
-    print("Playlist download finished.")
+    logging.info("Playlist download finished.")
 
 
 def convert_link_to_id(link):
@@ -161,9 +162,12 @@ def main():
     """
     client_id = os.environ.get("SPOTIPY_CLIENT_ID")
     client_secret = os.environ.get("SPOTIPY_CLIENT_SECRET")
-    playlist_link = input("Enter the Spotify playlist link: ")
+    output_dir = os.environ.get("OUTPUT_DIR")
+
+    playlist_link = input("Enter the spotify playlist link: ")
     playlist_id = convert_link_to_id(playlist_link)
-    download_playlist_from_spotify(playlist_id, client_id, client_secret)
+
+    download_playlist_from_spotify(playlist_id, client_id, client_secret, output_dir)
 
 
 if __name__ == "__main__":
